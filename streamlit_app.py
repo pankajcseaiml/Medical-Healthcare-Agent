@@ -60,6 +60,7 @@ with st.sidebar:
     st.header("🩺 Multi-Agent System")
     st.markdown("**KIT’s College of Engineering (Autonomous)**")
     st.markdown("*Generative & Agentic AI Lab (UAMPC0731)*")
+    st.markdown("**External POE – A.Y. 2026–2027**")
     st.divider()
 
     st.subheader("System Status")

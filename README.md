@@ -1,7 +1,7 @@
 # KIT’s College of Engineering (Autonomous), Kolhapur
 ## Department of Computer Science & Engineering
 ### Course Name: Generative and Agentic AI Lab (Course Code: UAMPC0731)
-#### Internal PoE – A.Y. 2026–2027
+#### External POE – A.Y. 2026–2027
 **Assignment No. 10 – Medical Healthcare Multi-Agent Assistant**  
 **GenAI & ML DevOps Lab — Containerization**  
 **CO:** 3 | **BL:** 5

@@ -336,6 +336,30 @@ The `.github/workflows/ci-cd.yml` pipeline automates:
 5. Kubernetes manifest dry-run validation (`kubectl apply --dry-run=client -f k8s/`).
 6. Docker image building, smoke testing, tagging, and publishing to GitHub Container Registry (GHCR).
 
+### 5. CI/CD Automation (Jenkins Pipeline)
+
+The project includes a production-grade declarative [Jenkinsfile](file:///c:/Users/Pankaj/Documents/Medical%20Healthcare%20Agent/Jenkinsfile) compatible with both Linux and Windows Jenkins agents.
+
+#### Pipeline Stages:
+1. **Checkout Code:** Fetches source repository via SCM.
+2. **Setup Environment & Dependencies:** Creates a clean Python virtual environment and installs `requirements.txt`.
+3. **Lint & Syntax Compilation:** Verifies Python bytecode and syntax across `app/` and `tests/`.
+4. **Automated Tests (Pytest):** Runs the test suite and exports test reports to `reports/pytest-results.xml` for Jenkins JUnit test trend charts.
+5. **Validate Kubernetes Manifests:** Performs client dry-run validation of `k8s/*.yaml`.
+6. **Build Docker Image:** Builds the hardened, multi-stage container image tagged with `BUILD_NUMBER` and `latest`.
+7. **Container Smoke Test:** Spins up an isolated container, probes the `/health` endpoint to ensure zero regression, and cleans up.
+8. **Push Image to Registry:** Authenticates with Docker credentials (`docker-hub-credentials`) and publishes the image.
+9. **Deploy to Kubernetes:** Deploys updated manifests and verifies rolling update status via `kubectl rollout status`.
+
+#### Setting up in Jenkins:
+1. Open Jenkins and create a **New Item** &rarr; select **Pipeline**.
+2. Under **Pipeline Definition**, select **Pipeline script from SCM**.
+3. Choose **Git**, specify your repository URL, and set the script path to `Jenkinsfile`.
+4. (Optional) Add credentials in Jenkins Credentials Manager:
+   - `docker-hub-credentials`: Username & Password for Docker Hub / container registry.
+   - `groq-api-key`: Secret text for Groq API key.
+5. Click **Build with Parameters** and select `DEPLOY_ENV` (`staging`, `production`, or `none`).
+
 ---
 
 ## 9. Conclusion

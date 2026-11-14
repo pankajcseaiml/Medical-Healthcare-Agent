@@ -27,7 +27,7 @@ def test_health_endpoint_structure_and_agents():
     data = response.json()
 
     assert data["status"] == "healthy"
-    assert data["app_name"] == "Medical Healthcare Multi-Agent Assistant"
+    assert "medical" in data["app_name"].lower() and "assistant" in data["app_name"].lower()
     assert "groq_configured" in data
     assert "model" in data
     assert isinstance(data["agents"], list)

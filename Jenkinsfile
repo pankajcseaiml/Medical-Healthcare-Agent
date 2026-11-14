@@ -11,7 +11,7 @@ pipeline {
     }
 
     environment {
-        APP_NAME              = 'medical-healthcare-assistant'
+        APP_NAME              = 'Medical Healthcare Multi-Agent Assistant'
         IMAGE_NAME            = 'medical-healthcare-assistant'
         IMAGE_TAG             = "${env.BUILD_NUMBER}"
         DOCKER_REGISTRY       = 'docker.io'

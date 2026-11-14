@@ -12,9 +12,11 @@ from agno.models.groq import Groq
 from app.config import Settings, get_settings
 from app.agents.tools import (
     search_library,
+    search_Library,
     get_consulted_sources,
     clear_consulted_sources,
     search_medical_documents,
+    verify_disclaimer,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,12 +72,13 @@ def create_medical_agents(
         name="Medical Research Agent",
         role="Medical Reference Investigation, Knowledge Retrieval, and Evidence Synthesis",
         model=model,
-        tools=[search_library],
+        tools=[search_library, search_Library],
         instructions=[
             "You are the Medical Research Agent.",
             "Your responsibilities are:",
             "1. Investigate the research questions formulated by the Query Analyzer.",
             "2. ALWAYS invoke the `search_library` tool using key medical terms to retrieve verified information from trusted medical references (WHO, CDC, AHA, NIH, GINA).",
+            "CRITICAL: The exact tool name is `search_library` (lowercase with underscore). Never use spaces or capital letters like 'search Library'.",
             "3. Retrieve established medical facts, disease etiologies, symptom profiles, and evidence-based preventive recommendations.",
             "4. Explicitly record and cite all consulted medical sources.",
             "5. Synthesize your findings into an objective, factual, evidence-backed medical summary.",
@@ -89,6 +92,7 @@ def create_medical_agents(
         name="Medical Answer Reviewer",
         role="Clinical Safety Review, Grounding Verification, and Disclaimer Enforcement",
         model=model,
+        tools=[verify_disclaimer],
         instructions=[
             "You are the Medical Answer Reviewer.",
             "Your responsibilities are:",
@@ -97,7 +101,8 @@ def create_medical_agents(
             "3. Enforce medical safety guardrails: NEVER provide a definitive clinical diagnosis, NEVER prescribe medications or specific drug dosages.",
             "4. Present the response in clear, compassionate, and patient-accessible language structured with Markdown headers.",
             "5. Prominently highlight red-flag warning signs that warrant immediate emergency medical intervention.",
-            f"6. Conclude the final response with the mandatory disclaimer: '{MANDATORY_DISCLAIMER}'"
+            f"6. Conclude the final response by verifying and appending the mandatory disclaimer: '{MANDATORY_DISCLAIMER}'. You may invoke verify_disclaimer tool.",
+            "Do not call any other tool names."
         ],
         markdown=True,
     )
@@ -123,11 +128,13 @@ def create_medical_team(settings: Optional[Settings] = None) -> Team:
         members=[query_analyzer, medical_research_agent, medical_answer_reviewer],
         mode=TeamMode.coordinate,
         model=model,
+        tools=[verify_disclaimer],
         instructions=[
             "Coordinate the three specialized healthcare agents sequentially:",
             "Step 1: Have the Query Analyzer dissect the user's medical query, identify the healthcare domain, and produce targeted research questions.",
-            "Step 2: Have the Medical Research Agent query the medical knowledge library using the search_library tool and gather verified facts and citations.",
+            "Step 2: Have the Medical Research Agent query the medical knowledge library using the search_library tool (exact name `search_library`) and gather verified facts and citations.",
             "Step 3: Have the Medical Answer Reviewer cross-examine findings, ensure clinical safety, eliminate ungrounded claims, format the response cleanly, and append the mandatory healthcare disclaimer.",
+            "Do not invent or call any tools other than delegating to members or using `verify_disclaimer`.",
             "Produce a comprehensive, educational, and safety-verified healthcare guide for the user."
         ],
         markdown=True,

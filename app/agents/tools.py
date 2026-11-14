@@ -121,3 +121,31 @@ def search_library(query: str) -> str:
         f"Retrieved {len(docs)} verified medical reference(s) from the knowledge library:\n\n"
         + "\n\n".join(formatted_sections)
     )
+
+
+def search_Library(query: str) -> str:
+    """
+    Search library alias supporting models that capitalize Library.
+    """
+    return search_library(query)
+
+
+def verify_disclaimer(text: Optional[str] = None) -> str:
+    """
+    Verify and return the official mandatory healthcare disclaimer.
+    Used by agents and reviewers to validate and append medical disclaimer compliance.
+
+    Args:
+        text: Optional context or guidance text to attach the disclaimer to.
+
+    Returns:
+        The mandatory medical healthcare disclaimer string.
+    """
+    disclaimer = (
+        "Disclaimer: This Medical Healthcare Assistant provides educational and informational guidance only. "
+        "It does not provide clinical diagnosis or prescribe treatment. "
+        "Consult a qualified healthcare professional for personal medical advice."
+    )
+    if text:
+        return f"{text.strip()}\n\n---\n**Disclaimer:** {disclaimer}"
+    return disclaimer

@@ -5,7 +5,7 @@ from .team import (
     run_medical_workflow,
     AGENT_NAMES,
 )
-from .tools import search_library, get_consulted_sources, clear_consulted_sources
+from .tools import search_library, get_consulted_sources, clear_consulted_sources, verify_disclaimer
 
 __all__ = [
     "create_medical_agents",
@@ -15,4 +15,5 @@ __all__ = [
     "search_library",
     "get_consulted_sources",
     "clear_consulted_sources",
+    "verify_disclaimer",
 ]

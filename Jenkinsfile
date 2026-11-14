@@ -19,6 +19,8 @@ pipeline {
         GROQ_CREDENTIALS_ID   = 'groq-api-key'
         PYTHON_VENV           = '.venv'
         REPORTS_DIR           = 'reports'
+        // Add Python, Pip, Docker, and Kubectl paths to PATH for Jenkins Windows Service
+        PATH                  = "C:\\Users\\Pankaj\\AppData\\Local\\Programs\\Python\\Python313;C:\\Users\\Pankaj\\AppData\\Local\\Programs\\Python\\Python313\\Scripts;C:\\Users\\Pankaj\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;${env.PATH}"
     }
 
     parameters {
@@ -57,7 +59,14 @@ pipeline {
                         '''
                     } else {
                         bat '''
-                            python -m venv %PYTHON_VENV%
+                            set "PYTHON_CMD=python"
+                            where python >nul 2>nul
+                            if %ERRORLEVEL% NEQ 0 (
+                                if exist "C:\\Users\\Pankaj\\AppData\\Local\\Programs\\Python\\Python313\\python.exe" (
+                                    set "PYTHON_CMD=C:\\Users\\Pankaj\\AppData\\Local\\Programs\\Python\\Python313\\python.exe"
+                                )
+                            )
+                            "%PYTHON_CMD%" -m venv %PYTHON_VENV%
                             call %PYTHON_VENV%\\Scripts\\activate.bat
                             python -m pip install --upgrade pip
                             pip install -r requirements.txt
@@ -200,6 +209,7 @@ pipeline {
 
                             timeout /t 5 /nobreak >nul
 
+                            call %PYTHON_VENV%\\Scripts\\activate.bat
                             python -c "import urllib.request, json; res = json.loads(urllib.request.urlopen('http://localhost:8080/health').read().decode()); assert res['status'] == 'healthy'; print('Smoke test SUCCESS:', res)"
 
                             docker rm -f smoke-test-app

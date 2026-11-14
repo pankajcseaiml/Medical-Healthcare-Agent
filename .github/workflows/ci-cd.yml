@@ -1,0 +1,150 @@
+name: Medical Healthcare Multi-Agent CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: medical-healthcare-assistant
+  REGISTRY: ghcr.io
+
+jobs:
+  # 1. Automated Testing & Validation Job
+  test-and-validate:
+    name: Run Pytest Suite & Linting
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Code Syntax & Integrity Check
+        run: |
+          python -m compileall app/ tests/
+
+      - name: Execute Automated Test Suite (Pytest)
+        env:
+          GROQ_API_KEY: "gsk_ci_testing_mock_key_0000000000000000"
+          GROQ_MODEL: "llama-3.3-70b-versatile"
+        run: |
+          pytest -v --tb=short
+
+  # 2. Kubernetes Manifests Validation Job
+  k8s-manifest-validation:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    needs: test-and-validate
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Validate Kubernetes Manifests (Client Dry-Run)
+        run: |
+          kubectl apply --dry-run=client -f k8s/
+
+  # 3. Container Image Build & Publishing Job
+  build-and-publish-container:
+    name: Build & Package Docker Image
+    runs-on: ubuntu-latest
+    needs: test-and-validate
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Metadata (Tags and Labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      - name: Build Local Container Image for Smoke Testing
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Container Smoke Test & Health Check
+        run: |
+          # Start container in background
+          docker run -d --name smoke-test-app -p 8000:8000 \
+            -e GROQ_API_KEY=gsk_smoke_test_key \
+            -e GROQ_MODEL=llama-3.3-70b-versatile \
+            ${{ env.IMAGE_NAME }}:test
+
+          # Poll healthcheck endpoint until ready
+          for i in {1..15}; do
+            if curl -s -f http://localhost:8000/health; then
+              echo "Healthcheck passed successfully!"
+              exit 0
+            fi
+            echo "Waiting for container startup (attempt $i/15)..."
+            sleep 2
+          done
+          echo "Healthcheck timed out!"
+          docker logs smoke-test-app
+          exit 1
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Container Image to Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

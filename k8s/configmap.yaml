@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medical-assistant-config
+  labels:
+    app.kubernetes.io/name: medical-healthcare-assistant
+    app.kubernetes.io/part-of: healthcare-system
+    app.kubernetes.io/component: backend
+data:
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  GROQ_MODEL: "llama-3.3-70b-versatile"
+  REQUEST_TIMEOUT: "60"

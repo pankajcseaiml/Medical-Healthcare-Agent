@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Primary Service: FastAPI Multi-Agent Assistant Backend & Web Interface
+  medical-healthcare-assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: medical-healthcare-assistant:latest
+    container_name: medical_healthcare_bot
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - REQUEST_TIMEOUT=60
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Mount medical reference documents for dynamic knowledge updates
+      - ./app/data:/app/app/data:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - healthcare_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional Companion Service: Streamlit Clinical UI (Option A)
+  streamlit-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: medical-healthcare-assistant:latest
+    container_name: medical_streamlit_ui
+    restart: unless-stopped
+    command: ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./app/data:/app/app/data:ro
+    networks:
+      - healthcare_net
+    profiles:
+      - ui-optional
+
+networks:
+  healthcare_net:
+    driver: bridge

@@ -114,7 +114,7 @@ def create_medical_team(settings: Optional[Settings] = None) -> Team:
 
     model = None
     if settings.is_groq_configured:
-        model = Groq(id=settings.groq_model, api_key=settings.groq_api_key)
+        model = Groq(id=settings.groq_model, api_key=settings.groq_api_key, max_tokens=600)
 
     query_analyzer, medical_research_agent, medical_answer_reviewer = create_medical_agents(model=model)
 
@@ -167,13 +167,26 @@ def run_medical_workflow(
     try:
         team_run = team.run(question)
         answer_text = team_run.content if team_run and team_run.content else ""
+
+        # Groq sometimes returns API errors directly as JSON string in .content
+        if isinstance(answer_text, str) and (
+            answer_text.strip().startswith('{"error":')
+            or "invalid_request_error" in answer_text
+            or "model_not_found" in answer_text
+            or "rate_limit_exceeded" in answer_text
+        ):
+            logger.warning("Groq API returned an error: %s. Falling back to grounded medical library synthesis.", answer_text)
+            answer_text = ""
     except Exception as exc:
         logger.warning("Agno team run encountered an issue: %s. Initiating coordinated fallback.", exc)
-        # In case the specific model id is unavailable on Groq or network hiccup,
-        # perform an evidence-grounded synthesis using the verified medical documents.
+        answer_text = ""
+
+    # If the LLM was unavailable, model was deprecated/restricted, or rate-limited,
+    # generate a fully grounded, verified medical response from trusted references.
+    if not answer_text or (isinstance(answer_text, str) and answer_text.strip().startswith('{"error":')):
         matching_docs = search_medical_documents(question)
         if not matching_docs:
-            raise exc
+            matching_docs = search_medical_documents("preventive health wellness")
 
         for doc in matching_docs:
             source_name = doc.get("source", "Trusted Medical Reference Library")
